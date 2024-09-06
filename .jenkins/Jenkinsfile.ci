@@ -1,0 +1,63 @@
+pipeline {
+	agent { node { label 'lisk-dex-core' } }
+	options { skipDefaultCheckout() }
+	stages {
+		stage('Checkout SCM') {
+			steps {
+				cleanWs()
+				dir('lisk-dex-core') {
+					checkout scm
+				}
+			}
+		}
+		stage('Build Core') {
+			steps {
+				dir('lisk-dex-core') {
+					nvm(readFile(".nvmrc").trim()) {
+						sh '''
+						npm install --global yarn
+						yarn install --frozen-lockfile
+						npm run build
+						'''
+					}
+				}
+			}
+		}
+		stage('Lint Core') {
+			steps {
+				dir('lisk-dex-core') {
+					nvm(readFile(".nvmrc").trim()) {
+						sh 'npm run lint'
+					}
+				}
+			}
+		}
+		stage('Format Core') {
+			steps {
+				dir('lisk-dex-core') {
+					nvm(readFile(".nvmrc").trim()) {
+						sh '''
+						npm run format
+						if [ -z "$(git status --untracked-files=no --porcelain)" ]; then
+							echo "All files formatted"
+						else
+							echo "Running format is required"
+							exit 1
+						fi
+						'''
+					}
+				}
+			}
+		}
+		stage('Test Core') {
+			steps {
+				dir('lisk-dex-core') {
+					nvm(readFile(".nvmrc").trim()) {
+						sh 'npm test'
+					}
+				}
+			}
+		}
+	}
+}
+// vim: filetype=groovy
